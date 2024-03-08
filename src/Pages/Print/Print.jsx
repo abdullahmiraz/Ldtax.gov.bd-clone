@@ -1,17 +1,20 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import "./Print.css";
 import QRCode from "react-qr-code";
 import { Button } from "bootstrap";
 import { useReactToPrint } from "react-to-print";
 const Print = () => {
-  const [printQr, setPrintQr] = useState("Miraz");
+  const [printQr, setPrintQr] = useState("");
   const componentRef = useRef();
 
-  // setPrintQr(`https://ldtax.gov.bd/dakhila/cDRwQ3R5YkZmL3FnMUVBQ2xuTUFvUT09`);
+  useEffect(() => {
+    setPrintQr("https://ldtax.gov.bd/dakhila/cDRwQ3R5YkZmL3FnMUVBQ2xuTUFvUT09");
+  }, []); // Run this effect only once when the component mounts
 
   const handlePrint = useReactToPrint({
     content: () => componentRef.current,
   });
+
   return (
     <div className=" ">
       <div className="col-md-12">
@@ -100,7 +103,7 @@ const Print = () => {
                         style={{ textAlign: "right" }}
                         className="text-right input_bangla"
                       >
-                        ক্রমিক নং 329123011007
+                        ক্রমিক নং ৩২৯১২৩০১১০০৭
                       </td>
                     </tr>
                     <tr>
@@ -524,15 +527,16 @@ const Print = () => {
                     </p>
                     <p></p>
                     <p className="input_bangla"> চালান নং : ২৩২৪-০০১১১৬৪৭৬১</p>
-                    <p>তারিখ : </p>
-                    <div style={{ marginTop: "-37px", marginLeft: "10px" }}>
+                      
+                    <p className="mt-2">তারিখ : </p>
+                    <div style={{ marginTop: "-28px", marginLeft: "10px" }}>
                       <p
                         style={{
                           width: "115px",
                           padding: "0",
                           margin: "0",
                           marginLeft: "38px",
-                          marginBottom: "2px",
+                          marginBottom: "12px",
                         }}
                       >
                         ১৭ আশ্বিন ১৪৩০
