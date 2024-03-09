@@ -1,0 +1,2 @@
+gmail: admin@admin.com
+p_word: admin

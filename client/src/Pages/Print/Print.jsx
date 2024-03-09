@@ -604,6 +604,7 @@ const Print = () => {
                   >
                     প্রিন্ট
                   </button>
+                  <button>Admin Panel</button>
                 </div>
               </div>
             </div>
