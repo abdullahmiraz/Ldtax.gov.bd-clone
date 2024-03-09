@@ -2,6 +2,10 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import PdfComp from "../../PdfComp";
 import { pdfjs } from "react-pdf";
+import defaultPdf from "../../1.pdf";
+import firebase from "firebase/compat/app";
+import "firebase/compat/storage";
+import { getDownloadURL } from "@firebase/storage";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.js",
@@ -14,6 +18,8 @@ const Dashboard = () => {
   const [allImage, setAllImage] = useState(null);
   const [pdfFile, setPdfFile] = useState(null);
   const [updateId, setUpdateId] = useState(null);
+  const [imgUrl, setImgUrl] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     getPdf();
@@ -87,8 +93,8 @@ const Dashboard = () => {
         alert("PDF deleted successfully!");
         getPdf();
         // Reload the page after deleting the PDF
-        window.location.reload();
       }
+      window.location.reload();
     } catch (error) {
       console.error("Error deleting file:", error);
     }
@@ -101,13 +107,49 @@ const Dashboard = () => {
     // window.location.reload();
   };
 
+  //   firebase fire upload here
+  const handleFileUpload = (event) => {
+    const selectedFile = event.target.files[0];
+    if (selectedFile) {
+      const storageRef = firebase.storage().ref();
+      const fileRef = storageRef.child(selectedFile.name);
+
+      setLoading(true); // Set loading state to true
+
+      fileRef.put(selectedFile).then((snapshot) => {
+        snapshot.ref.getDownloadURL().then((downloadURL) => {
+          console.log(downloadURL);
+
+          setImgUrl(downloadURL);
+          setLoading(false); // Set loading state to false once URL is obtained
+        });
+      });
+    } else {
+      console.log("No file selected, so select one ");
+    }
+  };
+
+  const showInNewTab = () => {
+    if (imgUrl) {
+      // Open a new tab with the provided PDF URL
+      window.open(imgUrl, "_blank");
+    } else {
+      console.log("PDF URL is empty.");
+    }
+  };
+
   return (
     <div>
       <h1 className="font-bold text-5xl text-center m-8 p-4 border">
         Admin dashboard
       </h1>
       <div className="input-files w-[80vw] border mx-auto m-4 p-4">
-        <form onSubmit={submitImage} className="formStyle">
+        {/*  form here  */}
+        <form
+          onSubmit={submitImage}
+          onChange={handleFileUpload}
+          className="formStyle"
+        >
           <h3>Upload, edit, delete pdf</h3> <br />
           <div className="uploadfile">
             <input
@@ -141,18 +183,25 @@ const Dashboard = () => {
             {allImage &&
               allImage.map((data) => (
                 <div
-                  key={data.pdf}
+                  key={data._id}
                   className="inner-div m-4 border p-2 rounded-md"
                 >
-                  <h6>Title: {data.title} </h6>
+                  <h6>Title: {data?.title} </h6>
                   <p>
                     Upload Time: {new Date(data.createdAt).toLocaleString()}
                   </p>
                   <button
-                    onClick={() => showPdf(data.pdf)}
+                    onClick={() => showPdf(data?.pdf)}
                     className="btn btn-sm btn-primary mt-2 mx-2"
                   >
                     Show PDF
+                  </button>
+                  <button
+                    onClick={showInNewTab}
+                    className="btn btn-sm btn-primary mt-2 mx-2"
+                    disabled={loading} // Disable the button when loading
+                  >
+                    {loading ? "Loading..." : "Show in new tab"}
                   </button>
                   <button
                     onClick={() => deletePdf(data._id)}

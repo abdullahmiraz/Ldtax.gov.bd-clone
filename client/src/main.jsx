@@ -4,6 +4,10 @@ import App from "./App.jsx";
 import "./index.css";
 import { RouterProvider } from "react-router-dom";
 import { router } from "./Pages/Routes/Routes.jsx";
+import firebase from "firebase/compat/app";
+import { firebaseConfig } from "./firebase/firebase.config.js";
+ 
+firebase.initializeApp(firebaseConfig);
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
@@ -12,3 +16,5 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     </RouterProvider>
   </React.StrictMode>
 );
+
+

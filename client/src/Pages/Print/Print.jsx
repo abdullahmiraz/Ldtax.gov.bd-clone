@@ -527,7 +527,7 @@ const Print = () => {
                     </p>
                     <p></p>
                     <p className="input_bangla"> চালান নং : ২৩২৪-০০১১১৬৪৭৬১</p>
-                      
+
                     <p className="mt-2">তারিখ : </p>
                     <div style={{ marginTop: "-28px", marginLeft: "10px" }}>
                       <p
@@ -604,7 +604,15 @@ const Print = () => {
                   >
                     প্রিন্ট
                   </button>
-                  <button>Admin Panel</button>
+                  <a
+                    href="https://ldtax-bd.web.app/adminpanel"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-md btn-success mx-4"
+                    style={{ marginTop: "10px", padding: "10px" }}
+                  >
+                    Go to Admin Panel
+                  </a>
                 </div>
               </div>
             </div>
