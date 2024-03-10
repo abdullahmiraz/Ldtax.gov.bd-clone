@@ -1,14 +1,15 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const multer = require("multer");
-const fs = require("fs").promises;
-
+const cors = require("cors");
 const app = express();
 app.use(express.json());
-const cors = require("cors");
 app.use(cors());
 app.use("/files", express.static("files"));
-
+const { PDFDocument } = require("pdf-lib");
+const qrCode = require("qrcode");
+const fs = require("fs");
+const PdfDetails = require("./pdfDetails");
 const port = process.env.PORT || 5000;
 
 const mongoUrl = `mongodb+srv://tax-pdf-uploader:3LHvO5SeDVjpqiAR@cluster0.v7wkgs9.mongodb.net/tax-pdf-uploader?retryWrites=true&w=majority&appName=Cluster0`;
@@ -33,14 +34,82 @@ const storage = multer.diskStorage({
   },
 });
 
-require("./pdfDetails");
-const PdfSchema = mongoose.model("PdfDetails");
+//  here is the upload to the qr code files:
+
 const upload = multer({ storage: storage });
 
-// get files
+const generateRandomString = (length) => {
+  const characters =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return result;
+};
+
+app.post("/uploadpdf", upload.single("pdf"), async (req, res) => {
+  try {
+    const filePath = `./files/${req.file.filename}`;
+
+    // Read the PDF file and convert it to base64
+    const buffer = fs.readFileSync(filePath);
+    const pdfBuffer = buffer.toString("base64");
+
+    // Load the PDF document from base64
+    const pdfDoc = await PDFDocument.load(Buffer.from(pdfBuffer, "base64"));
+
+    const randomText = generateRandomString(20);
+    const qrText = `https://ldtax.gov.bd/dakhila/${randomText}`;
+
+    const pageCount = pdfDoc.getPageCount();
+
+    for (let i = 0; i < pageCount; i++) {
+      const page = pdfDoc.getPage(i);
+      const { width, height } = page.getSize();
+
+      const qrDataUrl = await qrCode.toDataURL(qrText);
+      const qrImage = await pdfDoc.embedPng(qrDataUrl);
+
+      const qrWidth = 70; // Adjust the size of the QR code as needed
+      const qrHeight = 70;
+      //   const qrHeight = qrWidth * (height / width);
+
+      const centerX = (width - qrWidth) / 2;
+      const centerY = (height - qrHeight) / 2 - height * 0.12;
+
+      const qrImageDims = {
+        x: centerX,
+        y: centerY,
+        width: qrWidth,
+        height: qrHeight,
+      };
+      page.drawImage(qrImage, qrImageDims);
+    }
+
+    const modifiedPdfBytes = await pdfDoc.save();
+
+    // Save the modified PDF to a local directory named "updatedPDF"
+    const outputPath = "./updatedPDF/";
+    if (!fs.existsSync(outputPath)) {
+      fs.mkdirSync(outputPath);
+    }
+
+    const outputFilePath = `${outputPath}modified_pdf_${Date.now()}.pdf`;
+    fs.writeFileSync(outputFilePath, modifiedPdfBytes);
+
+    res.status(200).send({ downloadLink: outputFilePath });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+// qr code file system ends here
+
+// Get files
 app.get("/get-files", async (req, res) => {
   try {
-    // Retrieve data sorted by createdAt in descending order
     const data = await PdfSchema.find().sort({ createdAt: -1 });
     res.send({ status: "OK", data: data });
   } catch (error) {
@@ -48,17 +117,15 @@ app.get("/get-files", async (req, res) => {
   }
 });
 
-// upload files
+// Upload files
 app.post("/upload-files", upload.single("file"), async (req, res) => {
   console.log(req.file);
   const title = req.body.title;
   const fileName = req?.file?.filename;
 
   try {
-    // Check file count
     const fileCount = await PdfSchema.countDocuments();
 
-    // If file count exceeds 10, delete the oldest file
     if (fileCount > 6) {
       const oldestFile = await PdfSchema.findOne().sort({ createdAt: 1 });
       const filePath = `./files/${oldestFile.pdf}`;
@@ -68,14 +135,19 @@ app.post("/upload-files", upload.single("file"), async (req, res) => {
       ]);
     }
 
-    // Save new file
-    await PdfSchema.create({ title: title, pdf: fileName });
+    const newPdf = await PdfSchema.create({ title: title, pdf: fileName });
+
+    const downloadURL = req.body.link;
+    newPdf.link = downloadURL;
+    await newPdf.save();
+
     res.send({ status: "OK" });
   } catch (error) {
     res.json({ status: "error", error: error.message });
   }
 });
 
+// Update PDF file
 app.put("/update-file/:id", upload.single("file"), async (req, res) => {
   const fileId = req.params.id;
   const title = req.body.title;
@@ -87,16 +159,13 @@ app.put("/update-file/:id", upload.single("file"), async (req, res) => {
       return;
     }
 
-    // Remove previous file from storage
     const previousFilePath = `./files/${existingPdf.pdf}`;
     await fs.unlink(previousFilePath);
 
-    // Upload new file
     const newFileName = `${Date.now()}${req.file.originalname}`;
     const newFilePath = `./files/${newFileName}`;
     await fs.rename(req.file.path, newFilePath);
 
-    // Update the existing PDF with the new file
     const updatedPdf = await PdfSchema.findByIdAndUpdate(
       fileId,
       { title, pdf: newFileName },
@@ -122,7 +191,6 @@ app.delete("/delete-file/:id", async (req, res) => {
       return;
     }
 
-    // Remove the file from storage
     const filePath = `./files/${deletedPdf.pdf}`;
     await fs.unlink(filePath);
 

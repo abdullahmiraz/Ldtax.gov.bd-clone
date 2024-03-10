@@ -4,6 +4,7 @@ const pdfDetailsSchema = new mongoose.Schema(
   {
     pdf: String,
     title: String,
+    link: String, // New field to store the specific link
     createdAt: {
       type: Date,
       default: Date.now,
