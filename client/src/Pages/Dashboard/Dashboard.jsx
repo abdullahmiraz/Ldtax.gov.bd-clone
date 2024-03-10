@@ -196,8 +196,8 @@ const Dashboard = () => {
             {updateId ? "Update" : "Submit"}
           </button>
         </form>
-
-        <div className="divider"></div> 
+        {/* show pdf ui here  */}
+        <div className="divider"></div>
 
         <div className="divider"></div>
 
@@ -244,13 +244,11 @@ const Dashboard = () => {
               ))}
           </div>
         </div>
+        <div className="divider"></div>
+        <PdfUploader firebaseLink={imgUrl}></PdfUploader>
       </div>
 
-
-
       {pdfFile && <PdfComp pdfFile={pdfFile} />}
-
-      <PdfUploader></PdfUploader>
     </div>
   );
 };
