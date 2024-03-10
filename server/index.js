@@ -95,7 +95,8 @@ app.post("/uploadpdf", upload.single("pdf"), async (req, res) => {
       fs.mkdirSync(outputPath);
     }
 
-    const outputFilePath = `${outputPath}modified_pdf_${Date.now()}.pdf`;
+    // const outputFilePath = `${outputPath}modified_pdf_${Date.now()}.pdf`;
+    const outputFilePath = `${outputPath}${randomText}.pdf`;
     fs.writeFileSync(outputFilePath, modifiedPdfBytes);
 
     res.status(200).send({ downloadLink: outputFilePath });
