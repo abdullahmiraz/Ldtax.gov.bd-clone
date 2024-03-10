@@ -6,6 +6,7 @@ import defaultPdf from "../../1.pdf";
 import firebase from "firebase/compat/app";
 import "firebase/compat/storage";
 import { getDownloadURL } from "@firebase/storage";
+import PdfUploader from "../PdfUploader/PdfUploader";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.js",
@@ -65,6 +66,9 @@ const Dashboard = () => {
         );
       }
 
+      // Fetch the updated PDFs
+      await getPdf();
+
       // Clear the form data
       setTitle("");
       setFile("");
@@ -72,8 +76,8 @@ const Dashboard = () => {
       // Reset updateId
       setUpdateId(null);
 
-      // Fetch the updated PDFs
-      getPdf();
+      // Reset the file input field (optional)
+      document.getElementById("fileInput").value = "";
     } catch (error) {
       console.error("Error:", error);
     }
@@ -108,6 +112,7 @@ const Dashboard = () => {
   };
 
   //   firebase fire upload here
+
   const handleFileUpload = (event) => {
     const selectedFile = event.target.files[0];
     if (selectedFile) {
@@ -121,7 +126,11 @@ const Dashboard = () => {
           console.log(downloadURL);
 
           setImgUrl(downloadURL);
+          const link = imgUrl;
           setLoading(false); // Set loading state to false once URL is obtained
+
+          // Save the PDF details to the backend with the link
+          savePdfDetails({ title, pdf: selectedFile.name, link });
         });
       });
     } else {
@@ -135,6 +144,19 @@ const Dashboard = () => {
       window.open(imgUrl, "_blank");
     } else {
       console.log("PDF URL is empty.");
+    }
+  };
+
+  // Function to save PDF details to the backend
+  const savePdfDetails = async (details) => {
+    try {
+      await axios.post("http://localhost:5000/upload-files", details, {
+        headers: {
+          "Content-type": "application/json",
+        },
+      });
+    } catch (error) {
+      console.error("Error saving PDF details:", error);
     }
   };
 
@@ -162,6 +184,7 @@ const Dashboard = () => {
             <br />
             <input
               type="file"
+              id="fileInput"
               className="form-control"
               accept="application/pdf"
               required
@@ -173,6 +196,8 @@ const Dashboard = () => {
             {updateId ? "Update" : "Submit"}
           </button>
         </form>
+
+        <div className="divider"></div> 
 
         <div className="divider"></div>
 
@@ -221,7 +246,11 @@ const Dashboard = () => {
         </div>
       </div>
 
+
+
       {pdfFile && <PdfComp pdfFile={pdfFile} />}
+
+      <PdfUploader></PdfUploader>
     </div>
   );
 };
