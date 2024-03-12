@@ -53,15 +53,15 @@ const generateRandomString = (length) => {
 app.post("/uploadpdf", upload.single("pdf"), async (req, res) => {
   try {
     // Process the uploaded PDF in memory without saving the original file
-
     const pdfBuffer = req.file.buffer.toString("base64");
     const pdfDoc = await PDFDocument.load(Buffer.from(pdfBuffer, "base64"));
 
+    // Generate a random string for the file name
     const randomText = generateRandomString(20);
-    const qrText = `https://ldtax.gov.bd/dakhila/${randomText}`;
-
+    const qrText = `http://localhost:5000/updatedPDF/${randomText}`;
     const pageCount = pdfDoc.getPageCount();
 
+    // Embed QR code on each page of the PDF
     for (let i = 0; i < pageCount; i++) {
       const page = pdfDoc.getPage(i);
       const { width, height } = page.getSize();
@@ -83,19 +83,26 @@ app.post("/uploadpdf", upload.single("pdf"), async (req, res) => {
       page.drawImage(qrImage, qrImageDims);
     }
 
-    const modifiedPdfBytes = await pdfDoc.save();
-
-    // Save the modified PDF to the "./updatedPDF" directory
+    // Save the modified PDF to the "./updatedPDF" directory with a random file name
+    const originalFileName = req.file.originalname;
     const randomFileName = `${generateRandomString(20)}.pdf`;
     const updatedPdfPath = `./updatedPDF/${randomFileName}`;
-    fs.writeFileSync(updatedPdfPath, modifiedPdfBytes);
+    fs.writeFileSync(updatedPdfPath, await pdfDoc.save());
 
-    res.status(200).send({ message: "PDF successfully processed" });
+    // Delete older files if the count exceeds 10
+    const files = fs.readdirSync("./updatedPDF");
+    if (files.length > 10) {
+      const oldestFiles = files.sort((a, b) => fs.statSync(`./updatedPDF/${a}`).mtime.getTime() - fs.statSync(`./updatedPDF/${b}`).mtime.getTime()).slice(0, files.length - 10);
+      oldestFiles.forEach((file) => fs.unlinkSync(`./updatedPDF/${file}`));
+    }
+
+    res.status(200).send({ message: "PDF successfully processed", originalFileName, randomFileName });
   } catch (error) {
     console.error(error);
     res.status(500).send("Internal Server Error");
   }
 });
+
 
 // qr code file system ends here
 
@@ -114,7 +121,14 @@ app.get("/get-files", async (req, res) => {
 app.get("/get-updated-files", async (req, res) => {
   try {
     const files = fs.readdirSync("./updatedPDF");
-    res.send({ status: "OK", data: files });
+    // Sort files by creation time
+    const sortedFiles = files
+      .map((file) => ({
+        name: file,
+        createdAt: fs.statSync(`./updatedPDF/${file}`).birthtime,
+      }))
+      .sort((a, b) => b.createdAt - a.createdAt);
+    res.send({ status: "OK", data: sortedFiles });
   } catch (error) {
     console.error("Error fetching updated files:", error);
     res.json({ status: "error", error: error.message });
@@ -184,26 +198,51 @@ app.put("/update-file/:id", upload.single("file"), async (req, res) => {
 });
 
 // Delete PDF
-app.delete("/delete-file/:id", async (req, res) => {
-  const fileId = req.params.id;
+
+// Delete PDF
+app.delete("/delete-file/:fileName", async (req, res) => {
+  const fileName = req.params.fileName;
 
   try {
-    const deletedPdf = await PdfSchema.findByIdAndDelete(fileId);
+    const filePath = `./updatedPDF/${fileName}`;
 
-    if (!deletedPdf) {
+    // Check if the file exists
+    if (fs.existsSync(filePath)) {
+      // Delete the file
+      fs.unlinkSync(filePath);
+
+      // Respond with success
+      res.json({ status: "OK", data: { fileName } });
+    } else {
+      // File not found, respond with an error
       res.status(404).json({ status: "error", error: "PDF not found" });
-      return;
     }
-
-    const filePath = `./updatedPDF/${deletedPdf.pdf}`;
-    await fs.unlink(filePath);
-
-    res.json({ status: "OK", data: deletedPdf });
   } catch (error) {
     console.error("Error deleting PDF:", error);
     res.status(500).json({ status: "error", error: error.message });
   }
 });
+
+// app.delete("/delete-file/:id", async (req, res) => {
+//   const fileId = req.params.id;
+
+//   try {
+//     const deletedPdf = await PdfSchema.findByIdAndDelete(fileId);
+
+//     if (!deletedPdf) {
+//       res.status(404).json({ status: "error", error: "PDF not found" });
+//       return;
+//     }
+
+//     const filePath = `./updatedPDF/${deletedPdf.pdf}`;
+//     await fs.unlink(filePath);
+
+//     res.json({ status: "OK", data: deletedPdf });
+//   } catch (error) {
+//     console.error("Error deleting PDF:", error);
+//     res.status(500).json({ status: "error", error: error.message });
+//   }
+// });
 
 // Default route
 app.get("/", async (req, res) => {
