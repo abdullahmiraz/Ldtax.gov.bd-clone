@@ -21,9 +21,20 @@ const Dashboard = () => {
   const [updateId, setUpdateId] = useState(null);
   const [imgUrl, setImgUrl] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [updatedFiles, setUpdatedFiles] = useState([]);
+
+  const getUpdatedFiles = async () => {
+    try {
+      const result = await axios.get("http://localhost:5000/get-updated-files");
+      setUpdatedFiles(result.data.data);
+    } catch (error) {
+      console.error("Error fetching updated files:", error);
+    }
+  };
 
   useEffect(() => {
     getPdf();
+    getUpdatedFiles(); // Add this line
   }, []);
 
   const getPdf = async () => {
@@ -159,7 +170,13 @@ const Dashboard = () => {
       console.error("Error saving PDF details:", error);
     }
   };
+  const [selectedPdf, setSelectedPdf] = useState(null);
 
+  const openPdfInNewWindow = (pdf) => {
+    setSelectedPdf(pdf);
+    window.open(`http://localhost:5000/updatedPDF/${pdf}`, "_blank", "noopener,noreferrer,width=600,height=400");
+  };
+  
   return (
     <div>
       <h1 className="font-bold text-5xl text-center m-8 p-4 border">
@@ -200,7 +217,7 @@ const Dashboard = () => {
         <div className="divider"></div>
 
         <div className="divider"></div>
-
+        {/* show the updated pdf from here  */}
         <div className="uploaded flex flex-col justify-center items-center text-center font-bold">
           <h4>Uploaded PDF: {allImage ? allImage.length : 0}</h4>
 
@@ -245,6 +262,31 @@ const Dashboard = () => {
           </div>
         </div>
         <div className="divider"></div>
+        {/* show the updated pdf from here  */}
+        <div className="uploaded flex flex-col justify-center items-center text-center font-bold">
+          <h4>Updated PDF: {updatedFiles ? updatedFiles.length : 0}</h4>
+
+          <div className="output-div flex flex-wrap w-full gap-2">
+            {updatedFiles &&
+              updatedFiles.map((file) => (
+                <div
+                  key={file}
+                  className="inner-div m-4 border p-2 rounded-md"
+                  onClick={() => openPdfInNewWindow(file)}
+                >
+                  <h6>File Name: {file}</h6>
+                </div>
+              ))}
+          </div>
+        </div>
+        {selectedPdf && (
+          <div className="pdf-popup">
+            <PdfComp
+              pdfFile={`http://localhost:5000/updatedPDF/${selectedPdf}`}
+            />
+            <button onClick={() => setSelectedPdf(null)}>Close</button>
+          </div>
+        )}
         <PdfUploader firebaseLink={imgUrl}></PdfUploader>
       </div>
 

@@ -8,9 +8,23 @@ import { getDownloadURL } from "@firebase/storage";
 const PdfUploader = ({ firebaseLink }) => {
   const [file, setFile] = useState(null);
   const [downloadLink, setDownloadLink] = useState(null);
+
+  const [title, setTitle] = useState("");
   const [imgUrl, setImgUrl] = useState(null);
   const [loading, setLoading] = useState(false);
   // console.log(firebaseLink);
+
+  const savePdfDetails = async (details) => {
+    try {
+      await axios.post("http://localhost:5000/uploadpdf", details, {
+        headers: {
+          "Content-type": "application/json",
+        },
+      });
+    } catch (error) {
+      console.error("Error saving PDF details:", error);
+    }
+  };
 
   const handleFileChange = (event) => {
     setFile(event.target.files[0]);
@@ -93,10 +107,12 @@ const PdfUploader = ({ firebaseLink }) => {
       </button>
       {imgUrl && (
         <div>
-          <p>Modified PDF Download Link:  <a href={imgUrl}>Download</a> </p>
-          <a href={downloadLink} download="modified_pdf.pdf">
-            Download Modified PDF
-          </a>
+          <p>
+            Modified PDF Download Link:{" "}
+            <a href={imgUrl} target="_blank" download="modified_pdf.pdf">
+              Download
+            </a>{" "}
+          </p>
         </div>
       )}
     </div>
