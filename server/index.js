@@ -5,12 +5,14 @@ const cors = require("cors");
 const app = express();
 app.use(express.json());
 app.use(cors());
-app.use("/files", express.static("files"));
+app.use("/updatedPDF", express.static("updatedPDF"));
 const { PDFDocument } = require("pdf-lib");
 const qrCode = require("qrcode");
 const fs = require("fs");
-const PdfDetails = require("./pdfDetails");
+require("./pdfDetails");
 const port = process.env.PORT || 5000;
+require("./pdfDetails");
+const PdfSchema = mongoose.model("PdfDetails");
 
 const mongoUrl = `mongodb+srv://tax-pdf-uploader:3LHvO5SeDVjpqiAR@cluster0.v7wkgs9.mongodb.net/tax-pdf-uploader?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -24,16 +26,16 @@ mongoose
   })
   .catch((e) => console.log(e));
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "./files");
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now();
-    cb(null, uniqueSuffix + file.originalname);
-  },
-});
-
+// const storage = multer.diskStorage({
+//   destination: function (req, file, cb) {
+//     cb(null, "./temp");
+//   },
+//   filename: function (req, file, cb) {
+//     const uniqueSuffix = Date.now();
+//     cb(null, uniqueSuffix + file.originalname);
+//   },
+// });
+const storage = multer.memoryStorage(); // Use memory storage to avoid saving the original file
 //  here is the upload to the qr code files:
 
 const upload = multer({ storage: storage });
@@ -50,13 +52,9 @@ const generateRandomString = (length) => {
 
 app.post("/uploadpdf", upload.single("pdf"), async (req, res) => {
   try {
-    const filePath = `./files/${req.file.filename}`;
+    // Process the uploaded PDF in memory without saving the original file
 
-    // Read the PDF file and convert it to base64
-    const buffer = fs.readFileSync(filePath);
-    const pdfBuffer = buffer.toString("base64");
-
-    // Load the PDF document from base64
+    const pdfBuffer = req.file.buffer.toString("base64");
     const pdfDoc = await PDFDocument.load(Buffer.from(pdfBuffer, "base64"));
 
     const randomText = generateRandomString(20);
@@ -73,8 +71,6 @@ app.post("/uploadpdf", upload.single("pdf"), async (req, res) => {
 
       const qrWidth = 70; // Adjust the size of the QR code as needed
       const qrHeight = 70;
-      //   const qrHeight = qrWidth * (height / width);
-
       const centerX = (width - qrWidth) / 2;
       const centerY = (height - qrHeight) / 2 - height * 0.12;
 
@@ -89,17 +85,12 @@ app.post("/uploadpdf", upload.single("pdf"), async (req, res) => {
 
     const modifiedPdfBytes = await pdfDoc.save();
 
-    // Save the modified PDF to a local directory named "updatedPDF"
-    const outputPath = "./updatedPDF/";
-    if (!fs.existsSync(outputPath)) {
-      fs.mkdirSync(outputPath);
-    }
+    // Save the modified PDF to the "./updatedPDF" directory
+    const randomFileName = `${generateRandomString(20)}.pdf`;
+    const updatedPdfPath = `./updatedPDF/${randomFileName}`;
+    fs.writeFileSync(updatedPdfPath, modifiedPdfBytes);
 
-    // const outputFilePath = `${outputPath}modified_pdf_${Date.now()}.pdf`;
-    const outputFilePath = `${outputPath}${randomText}.pdf`;
-    fs.writeFileSync(outputFilePath, modifiedPdfBytes);
-
-    res.status(200).send({ downloadLink: outputFilePath });
+    res.status(200).send({ message: "PDF successfully processed" });
   } catch (error) {
     console.error(error);
     res.status(500).send("Internal Server Error");
@@ -118,18 +109,30 @@ app.get("/get-files", async (req, res) => {
   }
 });
 
+// Add this route before the existing routes
+
+app.get("/get-updated-files", async (req, res) => {
+  try {
+    const files = fs.readdirSync("./updatedPDF");
+    res.send({ status: "OK", data: files });
+  } catch (error) {
+    console.error("Error fetching updated files:", error);
+    res.json({ status: "error", error: error.message });
+  }
+});
+
 // Upload files
 app.post("/upload-files", upload.single("file"), async (req, res) => {
   console.log(req.file);
-  const title = req.body.title;
+  const title = req?.body?.title;
   const fileName = req?.file?.filename;
 
   try {
     const fileCount = await PdfSchema.countDocuments();
 
     if (fileCount > 6) {
-      const oldestFile = await PdfSchema.findOne().sort({ createdAt: 1 });
-      const filePath = `./files/${oldestFile.pdf}`;
+      const oldestFile = await PdfSchema.findOne().sort({ createdAt: -1 });
+      const filePath = `./updatedPDF/${oldestFile.pdf}`;
       await Promise.all([
         PdfSchema.findByIdAndDelete(oldestFile._id),
         fs.unlink(filePath),
@@ -160,11 +163,11 @@ app.put("/update-file/:id", upload.single("file"), async (req, res) => {
       return;
     }
 
-    const previousFilePath = `./files/${existingPdf.pdf}`;
+    const previousFilePath = `./updatedPDF/${existingPdf.pdf}`;
     await fs.unlink(previousFilePath);
 
     const newFileName = `${Date.now()}${req.file.originalname}`;
-    const newFilePath = `./files/${newFileName}`;
+    const newFilePath = `./updatedPDF/${newFileName}`;
     await fs.rename(req.file.path, newFilePath);
 
     const updatedPdf = await PdfSchema.findByIdAndUpdate(
@@ -192,7 +195,7 @@ app.delete("/delete-file/:id", async (req, res) => {
       return;
     }
 
-    const filePath = `./files/${deletedPdf.pdf}`;
+    const filePath = `./updatedPDF/${deletedPdf.pdf}`;
     await fs.unlink(filePath);
 
     res.json({ status: "OK", data: deletedPdf });
