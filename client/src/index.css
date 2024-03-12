@@ -5,11 +5,9 @@
 .pdf-div {
   margin: 0 auto;
   width: min-content;
-  padding: 50px;
+  padding: 10px;
   background-color: #dedede;
-  margin-top: 50px;
 }
 .react-pdf__Page__canvas {
   margin-bottom: 20px;
 }
- 

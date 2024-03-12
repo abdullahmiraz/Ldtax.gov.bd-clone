@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { Document, Page } from "react-pdf";
+import { useLocation } from "react-router-dom";
 
 function PdfComp(props) {
   const [numPages, setNumPages] = useState();
   const [pageNumber, setPageNumber] = useState(1);
+  const pageName = useLocation();
 
   useEffect(() => {
     let element = document.querySelector(".react-pdf__message");
@@ -17,10 +19,8 @@ function PdfComp(props) {
   }
 
   return (
-    <div className="pdf-div">
-      <p>
-        Page {pageNumber} of {numPages}
-      </p>
+    <div className="pdf-div bg-transparent ">
+      <p>{/* Page {pageNumber} of {numPages} */}</p>
       <Document file={props.pdfFile} onLoadSuccess={onDocumentLoadSuccess}>
         {Array.apply(null, Array(numPages))
           .map((x, i) => i + 1)

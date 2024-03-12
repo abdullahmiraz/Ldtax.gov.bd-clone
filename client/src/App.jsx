@@ -25,7 +25,7 @@ function App() {
       </div>
       <SiteUI></SiteUI>
       <div className="footer">
-        <div className="page-footer-inner">
+        <div className="page-footer-inner flex items-center">
           <a href="http://www.bangladesh.gov.bd/" target="_blank">
             <img
               src="https://ldtax.gov.bd/assets/admin/layout4/img/bd.png"
@@ -37,7 +37,7 @@ function App() {
           </span>
           &nbsp;&nbsp;
         </div>
-        <div className="page-footer-inner pull-right">
+        <div className="page-footer-inner pull-right flex items-center">
           <span className="title">কারিগরি সহায়তায়</span>
           <a href="http://mysoftheaven.com/" target="_blank">
             <img

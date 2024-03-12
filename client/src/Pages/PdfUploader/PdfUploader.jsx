@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
 import defaultPdf from "../../1.pdf";
 import firebase from "firebase/compat/app";
@@ -13,6 +13,10 @@ const PdfUploader = ({ firebaseLink }) => {
   const [imgUrl, setImgUrl] = useState(null);
   const [loading, setLoading] = useState(false);
   // console.log(firebaseLink);
+
+  // useEffect(()=>{
+  //   setLoading();
+  // }, [])
 
   const savePdfDetails = async (details) => {
     try {
@@ -45,6 +49,7 @@ const PdfUploader = ({ firebaseLink }) => {
 
           // Save the PDF details to the backend with the link
           savePdfDetails({ title, pdf: selectedFile.name, link });
+          window.location.reload();
         });
       });
     } else {
@@ -98,13 +103,13 @@ const PdfUploader = ({ firebaseLink }) => {
       >
         Upload PDF
       </button>
-      <button
+      {/* <button
         onClick={showInNewTab}
         className="btn btn-sm btn-primary mt-2 mx-2"
         disabled={loading} // Disable the button when loading
       >
         {loading ? "Loading..." : "Show in new tab"}
-      </button>
+      </button> */}
       {imgUrl && (
         <div>
           <p>

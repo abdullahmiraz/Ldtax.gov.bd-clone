@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import axios from "axios";
 import PdfComp from "../../PdfComp";
 import { pdfjs } from "react-pdf";
@@ -7,6 +7,7 @@ import firebase from "firebase/compat/app";
 import "firebase/compat/storage";
 import { getDownloadURL } from "@firebase/storage";
 import PdfUploader from "../PdfUploader/PdfUploader";
+import { AppContext } from "../../Context/ContextProvider";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.js",
@@ -22,11 +23,17 @@ const Dashboard = () => {
   const [imgUrl, setImgUrl] = useState(null);
   const [loading, setLoading] = useState(false);
   const [updatedFiles, setUpdatedFiles] = useState([]);
+  const { printPdf, setPrintPdf } = useContext(AppContext);
+
+  console.log(printPdf);
 
   const getUpdatedFiles = async () => {
     try {
       const result = await axios.get("http://localhost:5000/get-updated-files");
-      setUpdatedFiles(result.data.data);
+      const sortedFiles = result.data.data.sort((a, b) => {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      });
+      setUpdatedFiles(sortedFiles);
     } catch (error) {
       console.error("Error fetching updated files:", error);
     }
@@ -75,20 +82,28 @@ const Dashboard = () => {
             },
           }
         );
+
+        // Fetch the updated PDFs
+        await getPdf();
+
+        // Clear the form data
+        setTitle("");
+        setFile("");
+
+        // Reset updateId
+        setUpdateId(null);
+
+        // Reset the file input field (optional)
+        document.getElementById("fileInput").value = "";
+
+        // Delete previous files if count exceeds 10
+        if (updatedFiles.length > 10) {
+          const filesToDelete = updatedFiles.slice(0, updatedFiles.length - 10);
+          filesToDelete.forEach(async (file) => {
+            await deletePdf(file.currentFilename);
+          });
+        }
       }
-
-      // Fetch the updated PDFs
-      await getPdf();
-
-      // Clear the form data
-      setTitle("");
-      setFile("");
-
-      // Reset updateId
-      setUpdateId(null);
-
-      // Reset the file input field (optional)
-      document.getElementById("fileInput").value = "";
     } catch (error) {
       console.error("Error:", error);
     }
@@ -98,23 +113,50 @@ const Dashboard = () => {
     setPdfFile(`http://localhost:5000/files/${pdf}`);
   };
 
-  const deletePdf = async (id) => {
+  // const deletePdf = async (id) => {
+  //   try {
+  //     const result = await axios.delete(
+  //       `http://localhost:5000/delete-file/${id}`
+  //     );
+
+  //     if (result.data.status === "OK") {
+  //       alert("PDF deleted successfully!");
+  //       getPdf();
+  //       // Reload the page after deleting the PDF
+  //     }
+  //     window.location.reload();
+  //   } catch (error) {
+  //     console.error("Error deleting file:", error);
+  //   }
+  // };
+  const deletePdf = async (file) => {
     try {
-      const result = await axios.delete(
-        `http://localhost:5000/delete-file/${id}`
+      setLoading(true);
+
+      // Send a request to the server to delete the PDF
+      const response = await fetch(
+        `http://localhost:5000/delete-file/${file}`,
+        {
+          method: "DELETE",
+        }
       );
 
-      if (result.data.status === "OK") {
-        alert("PDF deleted successfully!");
-        getPdf();
-        // Reload the page after deleting the PDF
+      const data = await response.json();
+
+      if (data.status === "OK") {
+        // Handle success, e.g., update the state or fetch the updated files
+        console.log("PDF deleted successfully");
+      } else {
+        // Handle error, e.g., show an error message
+        console.error("Error deleting PDF:", data.error);
       }
       window.location.reload();
     } catch (error) {
-      console.error("Error deleting file:", error);
+      console.error("Error deleting PDF:", error);
+    } finally {
+      setLoading(false);
     }
   };
-
   const handleUpdate = (id, title) => {
     setUpdateId(id);
     setTitle(title);
@@ -174,9 +216,24 @@ const Dashboard = () => {
 
   const openPdfInNewWindow = (pdf) => {
     setSelectedPdf(pdf);
-    window.open(`http://localhost:5000/updatedPDF/${pdf}`, "_blank", "noopener,noreferrer,width=600,height=400");
+    setPrintPdf(pdf); // Update the selectedPdf value in the context
+
+    const newWindow = window.open(
+      `http://localhost:5000/updatedPDF/${pdf}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
+
+    // Check if the new window was successfully opened
+    if (newWindow) {
+      // Set the width and height of the new window to the screen dimensions
+      newWindow.moveTo(0, 0);
+      newWindow.resizeTo(screen.width, screen.height);
+    } else {
+      console.error("Failed to open new window.");
+    }
   };
-  
+
   return (
     <div>
       <h1 className="font-bold text-5xl text-center m-8 p-4 border">
@@ -184,7 +241,7 @@ const Dashboard = () => {
       </h1>
       <div className="input-files w-[80vw] border mx-auto m-4 p-4">
         {/*  form here  */}
-        <form
+        {/* <form
           onSubmit={submitImage}
           onChange={handleFileUpload}
           className="formStyle"
@@ -212,11 +269,11 @@ const Dashboard = () => {
           <button className="btn btn-primary" type="submit">
             {updateId ? "Update" : "Submit"}
           </button>
-        </form>
+        </form> */}
         {/* show pdf ui here  */}
-        <div className="divider"></div>
+        {/* <div className="divider"></div> */}
 
-        <div className="divider"></div>
+        {/* <div className="divider"></div> */}
         {/* show the updated pdf from here  */}
         <div className="uploaded flex flex-col justify-center items-center text-center font-bold">
           <h4>Uploaded PDF: {allImage ? allImage.length : 0}</h4>
@@ -263,18 +320,36 @@ const Dashboard = () => {
         </div>
         <div className="divider"></div>
         {/* show the updated pdf from here  */}
+        <PdfUploader firebaseLink={imgUrl}></PdfUploader>
         <div className="uploaded flex flex-col justify-center items-center text-center font-bold">
-          <h4>Updated PDF: {updatedFiles ? updatedFiles.length : 0}</h4>
+          <h4>Uploaded PDF: {updatedFiles ? updatedFiles.length : 0}</h4>
 
-          <div className="output-div flex flex-wrap w-full gap-2">
+          <div className="output-div gap-2">
             {updatedFiles &&
               updatedFiles.map((file) => (
                 <div
-                  key={file}
+                  key={file.name}
                   className="inner-div m-4 border p-2 rounded-md"
-                  onClick={() => openPdfInNewWindow(file)}
                 >
-                  <h6>File Name: {file}</h6>
+                  <h6>File Name: {file.name}</h6>
+                  <h5>Original Created At: {file.createdAt}</h5>
+                  <h5>Original Created At: {file.createdAt}</h5>
+                  <h5>Original File Name: {file.originalFileName}</h5>{" "}
+                  {/* Added this line */}
+                  <button
+                    onClick={() => openPdfInNewWindow(file.name)}
+                    className="btn btn-sm btn-primary mt-2 mx-2"
+                    disabled={loading}
+                  >
+                    {loading ? "Loading..." : "View"}
+                  </button>
+                  <button
+                    onClick={() => deletePdf(file.name)}
+                    className="btn btn-sm btn-secondary mt-2 mx-2"
+                    disabled={loading}
+                  >
+                    {loading ? "Deleting..." : "Delete"}
+                  </button>
                 </div>
               ))}
           </div>
@@ -287,7 +362,6 @@ const Dashboard = () => {
             <button onClick={() => setSelectedPdf(null)}>Close</button>
           </div>
         )}
-        <PdfUploader firebaseLink={imgUrl}></PdfUploader>
       </div>
 
       {pdfFile && <PdfComp pdfFile={pdfFile} />}
