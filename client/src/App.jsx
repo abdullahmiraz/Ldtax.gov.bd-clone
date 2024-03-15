@@ -1,13 +1,16 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
 import reactLogo from "./assets/react.svg";
 import viteLogo from "/vite.svg";
 import "./App.css";
 import "bootstrap/dist/css/bootstrap.css";
 import "bootstrap/dist/js/bootstrap.js";
-import SiteUI from "./Pages/SiteUI/SiteUI";
 import { Link } from "react-router-dom";
+import Print from "./Pages/Print/Print";
+import { AppContext } from "./Context/ContextProvider";
+
 function App() {
   const [count, setCount] = useState(0);
+  const { printPdf, setPrintPdf } = useContext(AppContext);
 
   return (
     <div className="siteuimain">
@@ -23,7 +26,8 @@ function App() {
         </div>
         <img src="https://ldtax.gov.bd/assets/admin/layout4/img/nagorik.png" />
       </div>
-      <SiteUI></SiteUI>
+      {console.log(printPdf)}
+      <Print link={printPdf}></Print>
       <div className="footer">
         <div className="page-footer-inner flex items-center">
           <a href="http://www.bangladesh.gov.bd/" target="_blank">

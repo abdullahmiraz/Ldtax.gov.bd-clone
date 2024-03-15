@@ -1,44 +1,42 @@
-import React, { useContext, useEffect, useRef } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import PdfComp from "../../PdfComp";
-import { AppContext } from "../../Context/ContextProvider";
 import { useReactToPrint } from "react-to-print";
+import { AppContext } from "../../Context/ContextProvider";
 
-const Print = () => {
+const Print = ({ link }) => {
   const componentRef = useRef();
+  const [loading, setLoading] = useState(false);
   const { printPdf, setPrintPdf } = useContext(AppContext);
+  const [selectedPdf, setSelectedPdf] = useState(null);
 
   useEffect(() => {
-    setPrintPdf("c6QlhjS3Ow0KV0WbB2IT.pdf");
-  }, []); // Run this effect only once when the component mounts
+    if (printPdf) {
+      setSelectedPdf(printPdf);
+    }
+    console.log(printPdf + " from print");
+  }, [printPdf]);
 
   const handlePrint = useReactToPrint({
     content: () => componentRef.current,
   });
 
-  const pdfUrl = `http://localhost:5000/updatedPDF/${printPdf}`;
-
   return (
     <div>
-        <div className="flex flex-col items-center w-[90%] mx-auto border my-4">
-        <div className=" w-full text-white p-2 bg-[#4B8DF8]">
+      <div className="flex flex-col items-center w-[90%] mx-auto border rounded-md my-4">
+        <div className=" w-full text-white p-2 border  bg-[#4B8DF8]">
           <p>ভূমি উন্নয়ন কর পরিশোধ রসিদ</p>
         </div>
-        {/* <div className="pdf-popup" ref={componentRef}> */}
-        <div className="pdf-popup">
-          <PdfComp pdfFile={pdfUrl} />
-        </div>
+        {selectedPdf ? (  
+          <div className="pdf-popup" ref={componentRef}>
+            <PdfComp pdfFile={`http://localhost:5000/updatedPDF/${link}`} />{" "}
+          </div>
+        ) : (
+          <div>Loading PDF ...</div>
+        )}
         <button
           type="button"
-          onClick={() => {
-            handlePrint();
-            window.open(
-              pdfUrl,
-              "_blank",
-              "noopener,noreferrer,width=full,height=full"
-            );
-          }}
+          onClick={handlePrint}
           className="btn btn-md btn-success mt-4 bg-[#4B8DF8] text-white"
-          target="_blank noopener"
           style={{ margin: "20px", padding: "10px" }}
         >
           প্রিন্ট

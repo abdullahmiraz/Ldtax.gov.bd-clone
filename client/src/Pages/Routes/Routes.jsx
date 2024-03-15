@@ -1,4 +1,4 @@
-import { RouterProvider, createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter } from "react-router-dom";
 import App from "../../App";
 import AdminPanel from "../AdminPanel/AdminPanel";
 import Dashboard from "../Dashboard/Dashboard";
@@ -6,14 +6,18 @@ import Dashboard from "../Dashboard/Dashboard";
 export const router = createBrowserRouter([
   {
     path: "/",
-    element: <App></App>,
+    element: <App />,
   },
   {
     path: "adminpanel",
-    element: <AdminPanel></AdminPanel>,
+    element: <AdminPanel />,
   },
   {
     path: "dashboard",
-    element: <Dashboard></Dashboard>,
+    element: <Dashboard />,
+  },
+  {
+    path: "updatedPDF/:pdfId",
+    element: <App />,
   },
 ]);

@@ -1,13 +1,12 @@
-import React, { useContext, useEffect, useState } from "react";
 import axios from "axios";
-import PdfComp from "../../PdfComp";
-import { pdfjs } from "react-pdf";
-import defaultPdf from "../../1.pdf";
 import firebase from "firebase/compat/app";
 import "firebase/compat/storage";
-import { getDownloadURL } from "@firebase/storage";
-import PdfUploader from "../PdfUploader/PdfUploader";
+import React, { useContext, useEffect, useState } from "react";
+import { pdfjs } from "react-pdf";
 import { AppContext } from "../../Context/ContextProvider";
+import PdfComp from "../../PdfComp";
+import PdfUploader from "../PdfUploader/PdfUploader";
+import { useNavigate } from "react-router-dom";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.js",
@@ -24,6 +23,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(false);
   const [updatedFiles, setUpdatedFiles] = useState([]);
   const { printPdf, setPrintPdf } = useContext(AppContext);
+  // fetch the api data of printPdf using context api for copilot
 
   console.log(printPdf);
 
@@ -42,7 +42,8 @@ const Dashboard = () => {
   useEffect(() => {
     getPdf();
     getUpdatedFiles(); // Add this line
-  }, []);
+    setSelectedPdf(printPdf);
+  }, [printPdf]);
 
   const getPdf = async () => {
     try {
@@ -82,18 +83,14 @@ const Dashboard = () => {
             },
           }
         );
-
-        // Fetch the updated PDFs
+ 
         await getPdf();
-
-        // Clear the form data
         setTitle("");
         setFile("");
 
         // Reset updateId
         setUpdateId(null);
 
-        // Reset the file input field (optional)
         document.getElementById("fileInput").value = "";
 
         // Delete previous files if count exceeds 10
@@ -213,26 +210,39 @@ const Dashboard = () => {
     }
   };
   const [selectedPdf, setSelectedPdf] = useState(null);
+  const navigate = useNavigate();
 
   const openPdfInNewWindow = (pdf) => {
-    setSelectedPdf(pdf);
-    setPrintPdf(pdf); // Update the selectedPdf value in the context
+    console.log("Dashboard: ", pdf);
 
-    const newWindow = window.open(
-      `http://localhost:5000/updatedPDF/${pdf}`,
-      "_blank",
-      "noopener,noreferrer"
-    );
+    // Set the selectedPdf in the context
+    setPrintPdf(pdf);
 
-    // Check if the new window was successfully opened
-    if (newWindow) {
-      // Set the width and height of the new window to the screen dimensions
-      newWindow.moveTo(0, 0);
-      newWindow.resizeTo(screen.width, screen.height);
-    } else {
-      console.error("Failed to open new window.");
-    }
+    // Redirect to the App component with the pdfId parameter
+    navigate(`/updatedPDF/${pdf}`);
+    
   };
+  // const openPdfInNewWindow = (pdf) => {
+  //   console.log("Dashboard: ", pdf);
+
+  //   setSelectedPdf(pdf);
+  //   setPrintPdf(pdf);
+
+  //   // Update the selectedPdf value in the context
+  //   //  change this line whenever you want to show the pdf in the popup
+  //   const newWindow = window.open(
+  //     `http://localhost:5000/updatedPDF/${pdf}`,
+  //     "_blank"
+  //     // "noopener,noreferrer"
+  //   );
+
+  //   if (newWindow) {
+  //     newWindow.moveTo(0, 0);
+  //     newWindow.resizeTo(screen.width, screen.height);
+  //   } else {
+  //     console.error("Failed to open new window.");
+  //   }
+  // };
 
   return (
     <div>
@@ -289,19 +299,19 @@ const Dashboard = () => {
                   <p>
                     Upload Time: {new Date(data.createdAt).toLocaleString()}
                   </p>
-                  <button
+                  {/* <button
                     onClick={() => showPdf(data?.pdf)}
                     className="btn btn-sm btn-primary mt-2 mx-2"
                   >
                     Show PDF
-                  </button>
-                  <button
+                  </button> */}
+                  {/* <button
                     onClick={showInNewTab}
                     className="btn btn-sm btn-primary mt-2 mx-2"
                     disabled={loading} // Disable the button when loading
                   >
                     {loading ? "Loading..." : "Show in new tab"}
-                  </button>
+                  </button> */}
                   <button
                     onClick={() => deletePdf(data._id)}
                     className="btn btn-sm btn-danger mt-2 mx-2"
@@ -326,15 +336,13 @@ const Dashboard = () => {
 
           <div className="output-div gap-2">
             {updatedFiles &&
-              updatedFiles.map((file) => (
+              updatedFiles.map((file, index) => (
                 <div
-                  key={file.name}
-                  className="inner-div m-4 border p-2 rounded-md"
+                  key={file.name + index}
+                  className="inner-div m-4 border p-2 rounded-`md"
                 >
                   <h6>File Name: {file.name}</h6>
                   <h5>Original Created At: {file.createdAt}</h5>
-                  <h5>Original Created At: {file.createdAt}</h5>
-                  <h5>Original File Name: {file.originalFileName}</h5>{" "}
                   {/* Added this line */}
                   <button
                     onClick={() => openPdfInNewWindow(file.name)}
@@ -354,17 +362,18 @@ const Dashboard = () => {
               ))}
           </div>
         </div>
+
+        {/* <TestContext link={printPdf}></TestContext> */}
         {selectedPdf && (
           <div className="pdf-popup">
-            <PdfComp
-              pdfFile={`http://localhost:5000/updatedPDF/${selectedPdf}`}
-            />
+            <PdfComp pdfFile={`http://localhost:5000/updatedPDF/${printPdf}`} />
             <button onClick={() => setSelectedPdf(null)}>Close</button>
           </div>
         )}
+        {/* <Print link={printPdf}></Print> */}
       </div>
 
-      {pdfFile && <PdfComp pdfFile={pdfFile} />}
+      {/* {pdfFile && <PdfComp pdfFile={pdfFile} />} */}
     </div>
   );
 };
