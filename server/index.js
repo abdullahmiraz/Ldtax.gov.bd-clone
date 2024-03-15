@@ -25,6 +25,8 @@ mongoose
     console.log("Connected to the database");
   })
   .catch((e) => console.log(e));
+// !!! the code below is for the qr code file system which will save my file from the disSrorage to the updatedPDF ; but the above is for temporary
+
 
 // const storage = multer.diskStorage({
 //   destination: function (req, file, cb) {
@@ -61,7 +63,6 @@ app.post("/uploadpdf", upload.single("pdf"), async (req, res) => {
     const qrText = `http://localhost:5000/updatedPDF/${randomText}`;
     const pageCount = pdfDoc.getPageCount();
 
-    // Embed QR code on each page of the PDF
     for (let i = 0; i < pageCount; i++) {
       const page = pdfDoc.getPage(i);
       const { width, height } = page.getSize();
@@ -69,10 +70,11 @@ app.post("/uploadpdf", upload.single("pdf"), async (req, res) => {
       const qrDataUrl = await qrCode.toDataURL(qrText);
       const qrImage = await pdfDoc.embedPng(qrDataUrl);
 
-      const qrWidth = 70; // Adjust the size of the QR code as needed
-      const qrHeight = 70;
+      const qrWidth = 90;
+      d;
+      const qrHeight = 90;
       const centerX = (width - qrWidth) / 2;
-      const centerY = (height - qrHeight) / 2 - height * 0.12;
+      const centerY = (height - qrHeight) / 2 - height * 0.13;
 
       const qrImageDims = {
         x: centerX,
@@ -85,26 +87,42 @@ app.post("/uploadpdf", upload.single("pdf"), async (req, res) => {
 
     // Save the modified PDF to the "./updatedPDF" directory with a random file name
     const originalFileName = req.file.originalname;
-    const randomFileName = `${generateRandomString(20)}.pdf`;
+    const randomFileName = `${randomText}.pdf`;
     const updatedPdfPath = `./updatedPDF/${randomFileName}`;
     fs.writeFileSync(updatedPdfPath, await pdfDoc.save());
 
-    // Delete older files if the count exceeds 10
+    // Delete older files if the count exceeds 10, check check **** for later
     const files = fs.readdirSync("./updatedPDF");
     if (files.length > 10) {
-      const oldestFiles = files.sort((a, b) => fs.statSync(`./updatedPDF/${a}`).mtime.getTime() - fs.statSync(`./updatedPDF/${b}`).mtime.getTime()).slice(0, files.length - 10);
+      const oldestFiles = files
+        .sort(
+          (a, b) =>
+            fs.statSync(`./updatedPDF/${a}`).mtime.getTime() -
+            fs.statSync(`./updatedPDF/${b}`).mtime.getTime()
+        )
+        .slice(0, files.length - 10);
       oldestFiles.forEach((file) => fs.unlinkSync(`./updatedPDF/${file}`));
     }
 
-    res.status(200).send({ message: "PDF successfully processed", originalFileName, randomFileName });
+    res
+      .status(200)
+      .send({
+        message: "PDF successfully processed",
+        originalFileName,
+        randomFileName,
+      });
   } catch (error) {
     console.error(error);
     res.status(500).send("Internal Server Error");
   }
 });
 
+app.get("/get-random-string", (req, res) => {
+  const randomText = generateRandomString(20);
+  res.json({ randomText });
+});
 
-// qr code file system ends here
+// qr code file system ends----------- here
 
 // Get files
 app.get("/get-files", async (req, res) => {
@@ -115,8 +133,6 @@ app.get("/get-files", async (req, res) => {
     res.json({ status: "error", error: error.message });
   }
 });
-
-// Add this route before the existing routes
 
 app.get("/get-updated-files", async (req, res) => {
   try {
@@ -198,15 +214,12 @@ app.put("/update-file/:id", upload.single("file"), async (req, res) => {
 });
 
 // Delete PDF
-
-// Delete PDF
 app.delete("/delete-file/:fileName", async (req, res) => {
   const fileName = req.params.fileName;
 
   try {
     const filePath = `./updatedPDF/${fileName}`;
 
-    // Check if the file exists
     if (fs.existsSync(filePath)) {
       // Delete the file
       fs.unlinkSync(filePath);
@@ -244,7 +257,7 @@ app.delete("/delete-file/:fileName", async (req, res) => {
 //   }
 // });
 
-// Default route
+// test test tst
 app.get("/", async (req, res) => {
   res.send("Success !!!");
 });
