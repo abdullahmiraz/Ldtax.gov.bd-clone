@@ -2,7 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const multer = require("multer");
 const cors = require("cors");
-const jwt = require("jsonwebtoken");
+// const jwt = require("jsonwebtoken");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
 app.use(express.json());
@@ -27,8 +27,19 @@ mongoose
     console.log("Connected to the database");
   })
   .catch((e) => console.log(e));
+// !!! the code below is for the qr code file system which will save my file from the disSrorage to the updatedPDF ; but the above is for temporary
 
-const storage = multer.memoryStorage();
+// const storage = multer.diskStorage({
+//   destination: function (req, file, cb) {
+//     cb(null, "./temp");
+//   },
+//   filename: function (req, file, cb) {
+//     const uniqueSuffix = Date.now();
+//     cb(null, uniqueSuffix + file.originalname);
+//   },
+// });
+const storage = multer.memoryStorage(); // Use memory storage to avoid saving the original file
+//  here is the upload to the qr code files:
 
 const upload = multer({ storage: storage });
 
@@ -176,6 +187,38 @@ app.post("/upload-files", upload.single("file"), async (req, res) => {
   }
 });
 
+// Update PDF file
+app.put("/update-file/:id", upload.single("file"), async (req, res) => {
+  const fileId = req.params.id;
+  const title = req.body.title;
+
+  try {
+    const existingPdf = await PdfSchema.findById(fileId);
+    if (!existingPdf) {
+      res.status(404).json({ status: "error", error: "PDF not found" });
+      return;
+    }
+
+    const previousFilePath = `./updatedPDF/${existingPdf.pdf}`;
+    await fs.unlink(previousFilePath);
+
+    const newFileName = `${Date.now()}${req.file.originalname}`;
+    const newFilePath = `./updatedPDF/${newFileName}`;
+    await fs.rename(req.file.path, newFilePath);
+
+    const updatedPdf = await PdfSchema.findByIdAndUpdate(
+      fileId,
+      { title, pdf: newFileName },
+      { new: true }
+    );
+
+    res.send({ status: "OK", data: updatedPdf });
+  } catch (error) {
+    console.error("Error updating PDF:", error);
+    res.status(500).json({ status: "error", error: error.message });
+  }
+});
+
 // Delete PDF
 app.delete("/delete-file/:fileName", async (req, res) => {
   const fileName = req.params.fileName;
@@ -198,3 +241,129 @@ app.delete("/delete-file/:fileName", async (req, res) => {
     res.status(500).json({ status: "error", error: error.message });
   }
 });
+
+// app.delete("/delete-file/:id", async (req, res) => {
+//   const fileId = req.params.id;
+
+//   try {
+//     const deletedPdf = await PdfSchema.findByIdAndDelete(fileId);
+
+//     if (!deletedPdf) {
+//       res.status(404).json({ status: "error", error: "PDF not found" });
+//       return;
+//     }
+
+//     const filePath = `./updatedPDF/${deletedPdf.pdf}`;
+//     await fs.unlink(filePath);
+
+//     res.json({ status: "OK", data: deletedPdf });
+//   } catch (error) {
+//     console.error("Error deleting PDF:", error);
+//     res.status(500).json({ status: "error", error: error.message });
+//   }
+// });
+
+// test test tst
+app.get("/", async (req, res) => {
+  res.send("Success !!!");
+});
+
+app.listen(port, () => {
+  console.log(`Server started on port ${port}`);
+});
+
+// users authentication system adding here :
+
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.v7wkgs9.mongodb.net/?retryWrites=true&w=majority`;
+
+const client = new MongoClient(uri, {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
+  },
+});
+async function run() {
+  try {
+    // Connect the client to the server	(optional starting in v4.7)
+    // await client.connect();
+
+    const userCollection = client.db("bistroDb").collection("users");
+
+    // jwt related api
+    // app.post("/jwt", async (req, res) => {
+    //   const user = req.body;
+    //   const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+    //     expiresIn: "24h",
+    //   });
+    //   res.send({ token });
+    // });
+
+    // middlewares
+    const verifyToken = (req, res, next) => {
+      // console.log('inside verify token', req.headers.authorization);
+      if (!req.headers.authorization) {
+        return res.status(401).send({ message: "unauthorized access" });
+      }
+      const token = req.headers.authorization.split(" ")[1];
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+          return res.status(401).send({ message: "unauthorized access" });
+        }
+        req.decoded = decoded;
+        next();
+      });
+    };
+
+    // use verify admin after verifyToken
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const isAdmin = user?.role === "admin";
+      if (!isAdmin) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      next();
+    };
+
+    // users related api
+    app.get("/users", async (req, res) => {
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get("/users/admin/:email", async (req, res) => {
+      const email = req.params.email;
+
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      let admin = false;
+      if (user) {
+        admin = user?.role === "admin";
+      }
+      res.send({ admin });
+    });
+
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      // insert email if user doesnt exists:
+      // you can do this many ways (1. email unique, 2. upsert 3. simple checking)
+      const query = { email: user.email };
+      const existingUser = await userCollection.findOne(query);
+      if (existingUser) {
+        return res.send({ message: "user already exists", insertedId: null });
+      }
+      const result = await userCollection.insertOne(user);
+      res.send(result);
+    });
+  } finally {
+    // Ensures that the client will close when you finish/error
+    // await client.close();
+  }
+}
+run().catch(console.dir);
