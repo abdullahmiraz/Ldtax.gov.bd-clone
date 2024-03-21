@@ -20,15 +20,15 @@ const AdminPanel = () => {
     // change password authentication later
     if (email == "admin@admin.com" && password === "admin") {
       navigate("/dashboard");
-    }else{
-        alert("Wrong username/password")
+    } else {
+      alert("Wrong username/password");
     }
   };
 
   return (
     <div>
       <div className="hero min-h-screen bg-base-200 adminpanel-body">
-        <div className="hero-content flex-col lg:flex-row-reverse">
+        <div className="hero-content flex-col  ">
           <div className="text-center my-4 lg:text-left">
             <img src="https://office.land.gov.bd/img/logo-big.png" alt="" />
           </div>
@@ -39,7 +39,7 @@ const AdminPanel = () => {
                   <span className="label-text">ব্যাবহারকারী</span>
                 </label>
                 <input
-                name="email"
+                  name="email"
                   type="email"
                   placeholder="ব্যাবহারকারী"
                   className="input input-bordered"
@@ -51,7 +51,7 @@ const AdminPanel = () => {
                   <span className="label-text">পাসওয়ার্ড</span>
                 </label>
                 <input
-                name="password"
+                  name="password"
                   type="password"
                   placeholder="পাসওয়ার্ড"
                   className="input input-bordered"

@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import axios from "axios";
 import defaultPdf from "../../1.pdf";
 import firebase from "firebase/compat/app";
 import "firebase/compat/storage";
 import { getDownloadURL } from "@firebase/storage";
+import { AppContext } from "../../Context/ContextProvider";
 
 const PdfUploader = ({ firebaseLink }) => {
   const [file, setFile] = useState(null);
@@ -12,11 +13,11 @@ const PdfUploader = ({ firebaseLink }) => {
   const [title, setTitle] = useState("");
   const [imgUrl, setImgUrl] = useState(null);
   const [loading, setLoading] = useState(false);
-  // console.log(firebaseLink);
+  const { imgLink, seImgLink } = useContext(AppContext);
 
-  // useEffect(()=>{
-  //   setLoading();
-  // }, [])
+  useEffect(() => {
+    setLoading();
+  }, [imgUrl]);
 
   const savePdfDetails = async (details) => {
     try {
@@ -48,8 +49,8 @@ const PdfUploader = ({ firebaseLink }) => {
           setLoading(false); // Set loading state to false once URL is obtained
 
           // Save the PDF details to the backend with the link
-          savePdfDetails({ title, pdf: selectedFile.name, link });
-          window.location.reload();
+          savePdfDetails({ title, pdf: selectedFile.name, link: downloadURL });
+          // window.location.reload();
         });
       });
     } else {
@@ -63,7 +64,7 @@ const PdfUploader = ({ firebaseLink }) => {
       formData.append("pdf", file);
 
       const response = await axios.post(
-        "http://localhost:5000/uploadpdf", // Use the correct server route
+        "http://localhost:5000/uploadpdf",
         formData,
         {
           headers: {
@@ -77,6 +78,9 @@ const PdfUploader = ({ firebaseLink }) => {
       const url = URL.createObjectURL(blob);
 
       setDownloadLink(url);
+
+      // Fetch the updated list of PDFs
+      await getPdf();
     } catch (error) {
       console.error("Error uploading PDF:", error);
     }
@@ -102,19 +106,17 @@ const PdfUploader = ({ firebaseLink }) => {
         disabled={!file}
       >
         Upload PDF
-      </button>
-      {/* <button
-        onClick={showInNewTab}
-        className="btn btn-sm btn-primary mt-2 mx-2"
-        disabled={loading} // Disable the button when loading
-      >
-        {loading ? "Loading..." : "Show in new tab"}
-      </button> */}
+      </button> 
       {imgUrl && (
         <div>
           <p>
             Modified PDF Download Link:{" "}
-            <a href={imgUrl} target="_blank" download="modified_pdf.pdf">
+            <a
+              className="btn btn-danger"
+              href={imgUrl}
+              target="_blank"
+              download="modified_pdf.pdf"
+            >
               Download
             </a>{" "}
           </p>

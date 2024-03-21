@@ -26,7 +26,7 @@ const Print = ({ link }) => {
         <div className=" w-full text-white p-2 border  bg-[#4B8DF8]">
           <p>ভূমি উন্নয়ন কর পরিশোধ রসিদ</p>
         </div>
-        {selectedPdf ? (  
+        {selectedPdf ? (
           <div className="pdf-popup" ref={componentRef}>
             <PdfComp pdfFile={`http://localhost:5000/updatedPDF/${link}`} />{" "}
           </div>
