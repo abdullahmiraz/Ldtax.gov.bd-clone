@@ -1,5 +1,4 @@
 import React from "react";
-
 import "./AdminPanel.css";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
@@ -7,18 +6,22 @@ const AdminPanel = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  //   const from = location.state?.from?.pathname || "/dashboard";
-
   const handleSubmit = (event) => {
     event.preventDefault();
 
     const form = event.target;
     const email = form.email.value;
     const password = form.password.value;
-    console.log(email, password);
 
-    // change password authentication later
-    if (email == "admin@admin.com" && password === "admin") {
+    // Replace 'process.env' with environment variables passed as props or context
+    // If you're using Create React App, environment variables starting with REACT_APP_ are automatically embedded in the build
+    
+    
+
+    if (
+      email === import.meta.env.VITE_REACT_APP_USER_EMAIL &&
+      password === import.meta.env.VITE_REACT_APP_USER_PASS_FOR_DASH
+    ) {
       navigate("/dashboard");
     } else {
       alert("Wrong username/password");

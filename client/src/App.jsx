@@ -25,8 +25,7 @@ function App() {
           </Link>
         </div>
         <img src="https://ldtax.gov.bd/assets/admin/layout4/img/nagorik.png" />
-      </div>
-      {console.log(printPdf)}
+      </div> 
       <Print link={printPdf}></Print>
       <div className="footer">
         <div className="page-footer-inner flex items-center">

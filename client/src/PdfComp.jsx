@@ -23,7 +23,7 @@ function PdfComp({ pdfFile }) {
     setNumPages(numPages);
   }
   return (
-    <div className="pdf-div bg-transparent ">
+    <div className="pdf-div p-0 bg-transparent ">
       {console.log(printPdf)}
       <Document file={pdfFile} onLoadSuccess={onDocumentLoadSuccess}>
         {Array.apply(null, Array(numPages))

@@ -106,7 +106,7 @@ const PdfUploader = ({ firebaseLink }) => {
         disabled={!file}
       >
         Upload PDF
-      </button> 
+      </button>
       {imgUrl && (
         <div>
           <p>

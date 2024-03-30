@@ -14,17 +14,34 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 ).toString();
 
 const Dashboard = () => {
-  const [title, setTitle] = useState(""); 
-  const [allImage, setAllImage] = useState(null); 
+  const [title, setTitle] = useState("");
+  const [file, setFile] = useState("");
+  const [allImage, setAllImage] = useState(null);
+  const [pdfFile, setPdfFile] = useState(null);
+  const [updateId, setUpdateId] = useState(null);
   const [imgUrl, setImgUrl] = useState(null);
   const [loading, setLoading] = useState(false);
   const [updatedFiles, setUpdatedFiles] = useState([]);
-  const { printPdf, setPrintPdf } = useContext(AppContext); 
+  const { printPdf, setPrintPdf } = useContext(AppContext);
+  // fetch the api data of printPdf using context api for copilot
 
   console.log(printPdf);
 
+  const getUpdatedFiles = async () => {
+    try {
+      const result = await axios.get("http://localhost:5000/get-updated-files");
+      const sortedFiles = result.data.data.sort((a, b) => {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      });
+      setUpdatedFiles(sortedFiles);
+    } catch (error) {
+      console.error("Error fetching updated files:", error);
+    }
+  };
+
   useEffect(() => {
     getPdf();
+    getUpdatedFiles(); // Add this line
     setSelectedPdf(printPdf);
   }, [printPdf]);
 
@@ -37,6 +54,78 @@ const Dashboard = () => {
     }
   };
 
+  const submitImage = async (e) => {
+    e.preventDefault();
+    const formData = new FormData();
+    formData.append("title", title || file.name); // Use filename if title is empty
+    formData.append("file", file);
+
+    try {
+      if (updateId) {
+        // Update existing PDF
+        const result = await axios.put(
+          `http://localhost:5000/update-file/${updateId}`,
+          formData,
+          {
+            headers: {
+              "Content-type": "multipart/form-data",
+            },
+          }
+        );
+      } else {
+        // New submission
+        const result = await axios.post(
+          "http://localhost:5000/upload-files",
+          formData,
+          {
+            headers: {
+              "Content-type": "multipart/form-data",
+            },
+          }
+        );
+ 
+        await getPdf();
+        setTitle("");
+        setFile("");
+
+        // Reset updateId
+        setUpdateId(null);
+
+        document.getElementById("fileInput").value = "";
+
+        // Delete previous files if count exceeds 10
+        if (updatedFiles.length > 10) {
+          const filesToDelete = updatedFiles.slice(0, updatedFiles.length - 10);
+          filesToDelete.forEach(async (file) => {
+            await deletePdf(file.currentFilename);
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  };
+
+  const showPdf = (pdf) => {
+    setPdfFile(`http://localhost:5000/files/${pdf}`);
+  };
+
+  // const deletePdf = async (id) => {
+  //   try {
+  //     const result = await axios.delete(
+  //       `http://localhost:5000/delete-file/${id}`
+  //     );
+
+  //     if (result.data.status === "OK") {
+  //       alert("PDF deleted successfully!");
+  //       getPdf();
+  //       // Reload the page after deleting the PDF
+  //     }
+  //     window.location.reload();
+  //   } catch (error) {
+  //     console.error("Error deleting file:", error);
+  //   }
+  // };
   const deletePdf = async (file) => {
     try {
       setLoading(true);
@@ -65,6 +154,12 @@ const Dashboard = () => {
       setLoading(false);
     }
   };
+  const handleUpdate = (id, title) => {
+    setUpdateId(id);
+    setTitle(title);
+    // Reload the page after deleting the PDF
+    // window.location.reload();
+  };
 
   //   firebase fire upload here
 
@@ -76,30 +171,29 @@ const Dashboard = () => {
 
       setLoading(true); // Set loading state to true
 
-      fileRef
-        .put(selectedFile)
-        .then((snapshot) => {
-          snapshot.ref.getDownloadURL().then((downloadURL) => {
-            console.log(downloadURL);
+      fileRef.put(selectedFile).then((snapshot) => {
+        snapshot.ref.getDownloadURL().then((downloadURL) => {
+          console.log(downloadURL);
 
-            // Update state with the download URL directly
-            setImgUrl(downloadURL);
-            setLoading(false); // Set loading state to false once URL is obtained
+          setImgUrl(downloadURL);
+          const link = imgUrl;
+          setLoading(false); // Set loading state to false once URL is obtained
 
-            // Save the PDF details to the backend with the link
-            savePdfDetails({
-              title,
-              pdf: selectedFile.name,
-              link: downloadURL,
-            });
-          });
-        })
-        .catch((error) => {
-          console.error("Error uploading file:", error);
-          setLoading(false); // Set loadin state to false in case of error
+          // Save the PDF details to the backend with the link
+          savePdfDetails({ title, pdf: selectedFile.name, link });
         });
+      });
     } else {
       console.log("No file selected, so select one ");
+    }
+  };
+
+  const showInNewTab = () => {
+    if (imgUrl) {
+      // Open a new tab with the provided PDF URL
+      window.open(imgUrl, "_blank");
+    } else {
+      console.log("PDF URL is empty.");
     }
   };
 
@@ -124,8 +218,31 @@ const Dashboard = () => {
     // Set the selectedPdf in the context
     setPrintPdf(pdf);
 
+    // Redirect to the App component with the pdfId parameter
     navigate(`/updatedPDF/${pdf}`);
+    
   };
+  // const openPdfInNewWindow = (pdf) => {
+  //   console.log("Dashboard: ", pdf);
+
+  //   setSelectedPdf(pdf);
+  //   setPrintPdf(pdf);
+
+  //   // Update the selectedPdf value in the context
+  //   //  change this line whenever you want to show the pdf in the popup
+  //   const newWindow = window.open(
+  //     `http://localhost:5000/updatedPDF/${pdf}`,
+  //     "_blank"
+  //     // "noopener,noreferrer"
+  //   );
+
+  //   if (newWindow) {
+  //     newWindow.moveTo(0, 0);
+  //     newWindow.resizeTo(screen.width, screen.height);
+  //   } else {
+  //     console.error("Failed to open new window.");
+  //   }
+  // };
 
   return (
     <div>
@@ -133,6 +250,40 @@ const Dashboard = () => {
         Admin dashboard
       </h1>
       <div className="input-files w-[80vw] border mx-auto m-4 p-4">
+        {/*  form here  */}
+       <form
+          onSubmit={submitImage}
+          onChange={handleFileUpload}
+          className="formStyle"
+        >
+          <h3>Upload, edit, delete pdf</h3> <br />
+          <div className="uploadfile">
+            <input
+              type="text"
+              className="form-control w-full"
+              placeholder="Title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />{" "}
+            <br />
+            <input
+              type="file"
+              id="fileInput"
+              className="form-control"
+              accept="application/pdf"
+              required
+              onChange={(e) => setFile(e.target.files[0])}
+            />
+          </div>{" "}
+          <br />
+          <button className="btn btn-primary" type="submit">
+            {updateId ? "Update" : "Submit"}
+          </button>
+        </form> 
+        {/* show pdf ui here  */}
+        <div className="divider"></div>
+
+        {/* <div className="divider"></div> */}
         {/* show the updated pdf from here  */}
         <div className="uploaded flex flex-col justify-center items-center text-center font-bold">
           <h4>Uploaded PDF: {allImage ? allImage.length : 0}</h4>
@@ -148,7 +299,7 @@ const Dashboard = () => {
                   <p>
                     Upload Time: {new Date(data.createdAt).toLocaleString()}
                   </p>
-
+                 v
                   <button
                     onClick={() => deletePdf(data._id)}
                     className="btn btn-sm btn-danger mt-2 mx-2"
@@ -166,12 +317,8 @@ const Dashboard = () => {
           </div>
         </div>
         <div className="divider"></div>
-
-        <PdfUploader
-          firebaseLink={imgUrl}
-          handleFileUpload={handleFileUpload}
-        />
-
+        {/* show the updated pdf from here  */}
+        <PdfUploader firebaseLink={imgUrl}></PdfUploader>
         <div className="uploaded flex flex-col justify-center items-center text-center font-bold">
           <h4>Uploaded PDF: {updatedFiles ? updatedFiles.length : 0}</h4>
 
@@ -184,6 +331,7 @@ const Dashboard = () => {
                 >
                   <h6>File Name: {file.name}</h6>
                   <h5>Original Created At: {file.createdAt}</h5>
+                  {/* Added this line */}
                   <button
                     onClick={() => openPdfInNewWindow(file.name)}
                     className="btn btn-sm btn-primary mt-2 mx-2"
@@ -191,7 +339,6 @@ const Dashboard = () => {
                   >
                     {loading ? "Loading..." : "View"}
                   </button>
-
                   <button
                     onClick={() => deletePdf(file.name)}
                     className="btn btn-sm btn-secondary mt-2 mx-2"
@@ -203,7 +350,18 @@ const Dashboard = () => {
               ))}
           </div>
         </div>
+
+        {/* <TestContext link={printPdf}></TestContext> */}
+        {selectedPdf && (
+          <div className="pdf-popup">
+            <PdfComp pdfFile={`http://localhost:5000/updatedPDF/${printPdf}`} />
+            <button onClick={() => setSelectedPdf(null)}>Close</button>
+          </div>
+        )}
+        {/* <Print link={printPdf}></Print> */}
       </div>
+
+      {/* {pdfFile && <PdfComp pdfFile={pdfFile} />} */}
     </div>
   );
 };
